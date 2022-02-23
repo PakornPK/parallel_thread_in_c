@@ -5,25 +5,57 @@
 #include <string.h>
 #include <unistd.h>
 
-#define NUM_THREADS 5
+#define NUM_THREADS 50
 #define URL "https://jsonplaceholder.typicode.com/users"
 
 pthread_mutex_t lock;
 pthread_t threads[NUM_THREADS];
 
 
-size_t static write_callback_func(void *buffer, size_t size, size_t nmemb,void *userp) {
-  char **response_ptr = (char **)userp;
+struct string {
+  char *ptr;
+  size_t len;
+};
 
-  /* assuming the response is a string */
-  *response_ptr = strndup(buffer, (size_t)(size * nmemb));
+void init_string(struct string *s) {
+  s->len = 0;
+  s->ptr = malloc(s->len+1);
+  if (s->ptr == NULL) {
+    fprintf(stderr, "malloc() failed\n");
+    exit(EXIT_FAILURE);
+  }
+  s->ptr[0] = '\0';
 }
+
+size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s)
+{
+  size_t new_len = s->len + size*nmemb;
+  s->ptr = realloc(s->ptr, new_len+1);
+  if (s->ptr == NULL) {
+    fprintf(stderr, "realloc() failed\n");
+    exit(EXIT_FAILURE);
+  }
+  memcpy(s->ptr+s->len, ptr, size*nmemb);
+  s->ptr[new_len] = '\0';
+  s->len = new_len;
+
+  return size*nmemb;
+}
+
+// size_t static write_callback_func(void *buffer, size_t size, size_t nmemb,void *userp) {
+//   char **response_ptr = (char **)userp;
+
+//   /* assuming the response is a string */
+//   *response_ptr = strndup(buffer, (size_t)(size * nmemb));
+// }
 
 void *Task(void *threadid) {
   pthread_mutex_lock(&lock);
   CURL *curl;
   CURLcode res;
   struct curl_slist *headers = NULL;
+  struct string s;
+  init_string(&s);
 
   curl = curl_easy_init();
   if (curl == NULL) {
@@ -36,17 +68,21 @@ void *Task(void *threadid) {
 
   int tid;
   tid = (long)threadid;
-  char *response = NULL;
+  // char *response = NULL;
   curl_easy_setopt(curl, CURLOPT_URL, URL);
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcrp/0.1");
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_func);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+  // curl_easy_setopt(curl, CURLOPT_NOPROGRESS,0);
+  // curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_func);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
+  // curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
   
   curl_easy_perform(curl);
 
-  printf("THREAD ID %d GET JSON FROM WEB : %s\n",tid, response);
+  printf("THREAD ID %d GET JSON FROM WEB : %s\n",tid, s.ptr);
+  free(s.ptr);
 
   curl_easy_cleanup(curl);
   curl_global_cleanup();
