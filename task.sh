@@ -1,1 +1,1 @@
-echo "Hello my task"
+echo "Hello my task $1"
