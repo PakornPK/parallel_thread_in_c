@@ -15,7 +15,7 @@ void *Task(void *threadid) {
    pthread_mutex_lock(&lock);
    int nRandonNumber = rand()%((10+1)-0) + 0;
    usleep(nRandonNumber * 1000);
-   long tid;
+   int tid;
    tid = (long)threadid;
    char buff[40]; 
    sprintf(buff,"./task.sh %d", tid);
@@ -36,7 +36,7 @@ int main () {
    // pthread_exit(NULL);
    for (int i = 0; i < NUM_THREADS; i++)
    {
-      pthread_join(threads[0], NULL);
+      pthread_join(threads[i], NULL);
    }
    pthread_mutex_destroy(&lock);  
 }
