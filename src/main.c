@@ -42,12 +42,6 @@ size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s)
   return size*nmemb;
 }
 
-// size_t static write_callback_func(void *buffer, size_t size, size_t nmemb,void *userp) {
-//   char **response_ptr = (char **)userp;
-
-//   /* assuming the response is a string */
-//   *response_ptr = strndup(buffer, (size_t)(size * nmemb));
-// }
 
 void *Task(void *threadid) {
   pthread_mutex_lock(&lock);
@@ -55,11 +49,12 @@ void *Task(void *threadid) {
   CURLcode res;
   struct curl_slist *headers = NULL;
   struct string s;
+  free(s.ptr);
   init_string(&s);
 
   curl = curl_easy_init();
   if (curl == NULL) {
-    return 128;
+    pthread_exit(NULL);
   }
 
   headers = curl_slist_append(headers, "Accept: application/json");
@@ -68,18 +63,20 @@ void *Task(void *threadid) {
 
   int tid;
   tid = (long)threadid;
-  // char *response = NULL;
+
   curl_easy_setopt(curl, CURLOPT_URL, URL);
   curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcrp/0.1");
-  // curl_easy_setopt(curl, CURLOPT_NOPROGRESS,0);
-  // curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_func);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writefunc);
-  // curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &s);
   
-  curl_easy_perform(curl);
+  res = curl_easy_perform(curl);
+  if (res)
+  {
+    pthread_exit(NULL);
+  }
+  
 
   printf("THREAD ID %d GET JSON FROM WEB : %s\n",tid, s.ptr);
   free(s.ptr);
@@ -95,7 +92,7 @@ int main() {
   curl_global_init(CURL_GLOBAL_ALL);
   int rc;
   for (int i = 0; i < NUM_THREADS; i++) {
-    rc = pthread_create(&threads[i], NULL, Task, (void *)i);
+    rc = pthread_create(&threads[i], NULL, Task, (void *)(uintptr_t)i);
     if (rc) {
       printf("Error:unable to create thread, %d\n", rc);
       return -1;
