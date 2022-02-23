@@ -1,2 +1,2 @@
 build: 
-	clang main.c -o c_parallel
+	clang src/main.c -o bin/c_parallel
