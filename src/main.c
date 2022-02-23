@@ -7,12 +7,12 @@
 #define NUM_THREADS 50
 
 
-// pthread_mutex_t lock;
+pthread_mutex_t lock;
 pthread_t threads[NUM_THREADS];
 
 
 void *Task(void *threadid) {
-   // pthread_mutex_lock(&lock);
+   pthread_mutex_lock(&lock);
    int nRandonNumber = rand()%((10+1)-0) + 0;
    usleep(nRandonNumber * 1000);
    long tid;
@@ -20,7 +20,7 @@ void *Task(void *threadid) {
    char buff[40]; 
    sprintf(buff,"./task.sh %d", tid);
    system(buff);
-   // pthread_mutex_unlock(&lock);
+   pthread_mutex_unlock(&lock);
    pthread_exit(NULL);
 }
 
@@ -33,10 +33,10 @@ int main () {
          return -1;
       }
    }
-   pthread_exit(NULL);
-   // for (int i = 0; i < NUM_THREADS; i++)
-   // {
-   //    pthread_join(threads[0], NULL);
-   // }
-   // pthread_mutex_destroy(&lock);  
+   // pthread_exit(NULL);
+   for (int i = 0; i < NUM_THREADS; i++)
+   {
+      pthread_join(threads[0], NULL);
+   }
+   pthread_mutex_destroy(&lock);  
 }
